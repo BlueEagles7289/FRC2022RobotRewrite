@@ -106,58 +106,96 @@ void Robot::TeleopPeriodic() {
 
 
   if(robotMode == enumRobotMode::drive){
-
-    if(tempButtonLoad){
-      
-      //PE is clear
-      if(tempPELoader || tempPEMagazine){
-        
-        tempLoader = 0.2;
-
-      }
-
-    }
     
-    if(tempButtonMagazine){
-      
-      //PE is clear
-      if(tempPEMagazine){
+    if(tempButtonOverride){
 
-        tempMagazine = 0.05;
+      #pragma region Override Magazine and Shooter Motors
 
-      }
+        if(tempButtonLoad){
+          
+          tempLoader = 0.05;
 
-      if(tempButtonShooter){
+        }
+
+        if(tempButtonMagazine){
+          
+          tempMagazine = 0.2;
+
+        }
+
+        if(tempButtonShooter){
+          
+          //Hijack the lift mode switch to pick shoot high/low
+          if(tempButtonLiftMode){
+            tempShooter = 0.6;
+          } else {
+            tempShooter = 0.35;
+          }
+
+        }
+
+      #pragma endregion
+
+    } else {
         
-        tempMagazine = 0.6;
+      #pragma region Auto Index Buffer
 
-      }
+        if(tempButtonLoad){
+          
+          //PE is clear
+          if(tempPELoader || tempPEMagazine){
+            
+            tempLoader = 0.2;
+
+          }
+
+          //PE is clear
+          if(tempPEMagazine){
+
+            //Override magazine motor to run faster when shooting
+            if(tempButtonShoot){
+              tempMagazine = 0.6;
+            } else {
+              tempMagazine = 0.05;
+            }
+          }
+
+        }
+        
+        if(tempButtonShoot){
+          
+          //Hijack the lift mode switch to pick shoot high/low
+          if(tempButtonLiftMode){
+            tempShooter = 0.6;
+          } else {
+            tempShooter = 0.35;
+          }
+
+        }
+
+      #pragma endregion
+      
+      //Set lift arm movement to 0 while in drive mode
+      tempLiftArm = 0;
 
     }
-    
-    if(tempButtonShoot){
-      
-      tempShooter = 0.6;
-
-    }
-      
 
   } else if(robotMode == enumRobotMode::lift) {
     
     if(tempButtonUp && !LiftUpperLimit.Get()){
-      m_Lift.Set(1);
+      tempLiftArm = 1;
     } else if(tempButtonDown && !LiftLowerLimit.Get()){
-      m_Lift.Set(-1);
+      tempLiftArm = -1;
     }
 
 
     if(tempX > 0 && !RotateArmFrontLimit.Get()){
 
-      tempRotateArm = tempX * 0.5;
+      tempRotateArm = tempX;
 
     } else if(tempX < 0 && !RotateArmBackLimit.Get()){
 
-      tempRotateArm = tempX * 0.5;
+      tempRotateArm = tempX;
 
     }
 
@@ -172,7 +210,8 @@ void Robot::TeleopPeriodic() {
 
   }
 
-  m_RotateArm.Set(tempRotateArm);
+  m_Lift.Set(tempLiftArm);
+  m_RotateArm.Set(tempRotateArm * 0.5);
   m_Magazine.Set(tempMagazine);
   m_Loader.Set(tempLoader);
   m_Shooter.Set(ctre::phoenix::motorcontrol::ControlMode::PercentOutput ,tempShooter);
